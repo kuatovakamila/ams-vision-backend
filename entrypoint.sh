@@ -6,6 +6,10 @@ echo "Starting AMS Vision Backend..."
 echo "Running database migrations..."
 alembic upgrade head
 
+# Seed default users if not already present
+echo "Seeding database..."
+python seed_db.py
+
 # Start the application
 echo "Starting application server in production mode..."
 exec gunicorn app.main:app \
