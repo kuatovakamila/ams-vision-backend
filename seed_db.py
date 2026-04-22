@@ -40,9 +40,9 @@ async def seed():
 
         # Create default users
         users = [
-            ("admin@ams.local",    "admin123",    "Admin",    "User",     "admin",    True),
-            ("operator@ams.local", "operator123", "Operator", "User",     "operator", False),
-            ("viewer@ams.local",   "viewer123",   "Viewer",   "User",     "viewer",   False),
+            ("admin@ams.com",    "admin123",    "Admin",    "User",     "admin",    True),
+            ("operator@ams.com", "operator123", "Operator", "User",     "operator", False),
+            ("viewer@ams.com",   "viewer123",   "Viewer",   "User",     "viewer",   False),
         ]
 
         for email, password, first, last, role, is_superadmin in users:
