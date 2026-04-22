@@ -20,6 +20,7 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 COPY entrypoint.sh .
+COPY seed_db.py .
 
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
