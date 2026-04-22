@@ -17,13 +17,29 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add is_superadmin column to users table
-    op.add_column('users', sa.Column('is_superadmin', sa.Boolean(), nullable=False, server_default='false'))
-    
-    # Add tenant_id to users table
-    op.add_column('users', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_users_tenant_id'), 'users', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_users_tenant_id', 'users', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
+    conn = op.get_bind()
+
+    existing_cols = {row[0] for row in conn.execute(sa.text(
+        "SELECT column_name FROM information_schema.columns WHERE table_name='users'"
+    ))}
+
+    if 'is_superadmin' not in existing_cols:
+        op.add_column('users', sa.Column('is_superadmin', sa.Boolean(), nullable=False, server_default='false'))
+
+    if 'tenant_id' not in existing_cols:
+        op.add_column('users', sa.Column('tenant_id', sa.Integer(), nullable=True))
+
+    existing_indexes = {row[0] for row in conn.execute(sa.text(
+        "SELECT indexname FROM pg_indexes WHERE tablename='users'"
+    ))}
+    if 'ix_users_tenant_id' not in existing_indexes:
+        op.create_index(op.f('ix_users_tenant_id'), 'users', ['tenant_id'], unique=False)
+
+    existing_fks = {row[0] for row in conn.execute(sa.text(
+        "SELECT conname FROM pg_constraint WHERE conrelid='users'::regclass AND contype='f'"
+    ))}
+    if 'fk_users_tenant_id' not in existing_fks:
+        op.create_foreign_key('fk_users_tenant_id', 'users', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
     
     # Set default tenant_id for existing users (ensure default tenant exists)
     op.execute(
