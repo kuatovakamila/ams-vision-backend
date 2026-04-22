@@ -84,7 +84,7 @@ class FrigateEventCreate(BaseModel):
     snapshot_url: Optional[str] = None
     clip_url: Optional[str] = None
     frigate_timestamp: Optional[datetime] = None
-    metadata: Optional[Dict[str, Any]] = None
+    event_metadata: Optional[Dict[str, Any]] = None
     event_type: str = "detection"  # detection, motion, alarm, etc.
 
 

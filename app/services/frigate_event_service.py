@@ -207,7 +207,7 @@ class FrigateEventService:
             existing_event.confidence = confidence
             existing_event.snapshot_url = snapshot_url
             existing_event.clip_url = clip_url
-            existing_event.metadata = metadata
+            existing_event.event_metadata = metadata
             existing_event.frigate_timestamp = frigate_timestamp
             existing_event.event_type = event_type
             
@@ -228,7 +228,7 @@ class FrigateEventService:
                 confidence=confidence,
                 snapshot_url=snapshot_url,
                 clip_url=clip_url,
-                metadata=metadata,
+                event_metadata=metadata,
                 frigate_timestamp=frigate_timestamp,
                 camera_id=camera.id if camera else None,
                 location=camera.location if camera else None,

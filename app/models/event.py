@@ -27,7 +27,7 @@ class Event(Base, TenantMixin):
     confidence = Column(Float, nullable=True)  # Detection confidence score (0-1)
     snapshot_url = Column(String(500), nullable=True)  # URL to Frigate snapshot
     clip_url = Column(String(500), nullable=True)  # URL to Frigate clip
-    metadata = Column(JSONB, nullable=True)  # Additional Frigate event data (zones, regions, etc.)
+    event_metadata = Column(JSONB, nullable=True)  # Additional Frigate event data (zones, regions, etc.)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(
