@@ -23,10 +23,17 @@ sync_engine = create_engine(
 )
 
 # Async engine for the application
+_async_url = (
+    settings.database_url
+    .replace("postgresql://", "postgresql+asyncpg://")
+    .replace("?sslmode=require", "")
+    .replace("&sslmode=require", "")
+)
 async_engine = create_async_engine(
-    settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
+    _async_url,
     pool_pre_ping=True,
     echo=settings.debug,
+    connect_args={"ssl": "require"} if "neon.tech" in settings.database_url else {},
 )
 
 # Base declarative model
