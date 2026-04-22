@@ -32,7 +32,7 @@ def _has_index(conn, index_name):
 
 def _has_fk(conn, table, fk_name):
     result = conn.execute(sa.text(
-        "SELECT 1 FROM pg_constraint WHERE conrelid=:t::regclass AND conname=:n AND contype='f'"
+        "SELECT 1 FROM pg_constraint WHERE conrelid=(SELECT oid FROM pg_class WHERE relname=:t) AND conname=:n AND contype='f'"
     ), {"t": table, "n": fk_name})
     return result.fetchone() is not None
 
