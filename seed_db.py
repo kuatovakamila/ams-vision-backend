@@ -25,8 +25,8 @@ async def seed():
             ('viewer',   'Read-only access'),
         ]:
             await db.execute(text("""
-                INSERT INTO roles (name, description, tenant_id)
-                VALUES (:name, :description, :tenant_id)
+                INSERT INTO roles (name, description, is_system, tenant_id)
+                VALUES (:name, :description, false, :tenant_id)
                 ON CONFLICT DO NOTHING
             """), {"name": role_name, "description": description, "tenant_id": tenant_id})
         await db.commit()
