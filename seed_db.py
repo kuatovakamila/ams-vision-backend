@@ -19,17 +19,16 @@ async def seed():
         tenant_id = tenant[0]
 
         # Create default roles
-        for role_name, display_name, description in [
-            ('admin',    'Administrator', 'Full system access'),
-            ('operator', 'Operator',      'Operational access'),
-            ('viewer',   'Viewer',        'Read-only access'),
+        for role_name, description in [
+            ('admin',    'Full system access'),
+            ('operator', 'Operational access'),
+            ('viewer',   'Read-only access'),
         ]:
             await db.execute(text("""
-                INSERT INTO roles (name, display_name, description, tenant_id)
-                VALUES (:name, :display_name, :description, :tenant_id)
+                INSERT INTO roles (name, description, tenant_id)
+                VALUES (:name, :description, :tenant_id)
                 ON CONFLICT DO NOTHING
-            """), {"name": role_name, "display_name": display_name,
-                   "description": description, "tenant_id": tenant_id})
+            """), {"name": role_name, "description": description, "tenant_id": tenant_id})
         await db.commit()
 
         admin_role = (await db.execute(text(
