@@ -16,93 +16,56 @@ branch_labels = None
 depends_on = None
 
 
+def _has_column(conn, table, column):
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.columns WHERE table_name=:t AND column_name=:c"
+    ), {"t": table, "c": column})
+    return result.fetchone() is not None
+
+
+def _has_index(conn, index_name):
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM pg_indexes WHERE indexname=:i"
+    ), {"i": index_name})
+    return result.fetchone() is not None
+
+
+def _has_fk(conn, table, fk_name):
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM pg_constraint WHERE conrelid=:t::regclass AND conname=:n AND contype='f'"
+    ), {"t": table, "n": fk_name})
+    return result.fetchone() is not None
+
+
+def _add_tenant_id(conn, table):
+    if not _has_column(conn, table, 'tenant_id'):
+        op.add_column(table, sa.Column('tenant_id', sa.Integer(), nullable=True))
+
+    if not _has_index(conn, f'ix_{table}_tenant_id'):
+        op.create_index(op.f(f'ix_{table}_tenant_id'), table, ['tenant_id'], unique=False)
+
+    if not _has_fk(conn, table, f'fk_{table}_tenant_id'):
+        op.create_foreign_key(f'fk_{table}_tenant_id', table, 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
+
+    op.execute(sa.text(
+        f"UPDATE {table} SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default') WHERE tenant_id IS NULL"
+    ))
+    op.alter_column(table, 'tenant_id', nullable=False)
+
+
 def upgrade() -> None:
-    # Ensure default tenant exists
-    op.execute(
+    conn = op.get_bind()
+
+    op.execute(sa.text(
         """
         INSERT INTO tenants (name, slug, status)
         VALUES ('Default Tenant', 'default', 'active')
         ON CONFLICT (slug) DO NOTHING
         """
-    )
-    
-    # Add tenant_id to cameras table
-    op.add_column('cameras', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_cameras_tenant_id'), 'cameras', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_cameras_tenant_id', 'cameras', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
-    op.execute(
-        """
-        UPDATE cameras
-        SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default')
-        WHERE tenant_id IS NULL
-        """
-    )
-    op.alter_column('cameras', 'tenant_id', nullable=False)
-    
-    # Add tenant_id to incidents table
-    op.add_column('incidents', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_incidents_tenant_id'), 'incidents', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_incidents_tenant_id', 'incidents', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
-    op.execute(
-        """
-        UPDATE incidents
-        SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default')
-        WHERE tenant_id IS NULL
-        """
-    )
-    op.alter_column('incidents', 'tenant_id', nullable=False)
-    
-    # Add tenant_id to events table
-    op.add_column('events', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_events_tenant_id'), 'events', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_events_tenant_id', 'events', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
-    op.execute(
-        """
-        UPDATE events
-        SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default')
-        WHERE tenant_id IS NULL
-        """
-    )
-    op.alter_column('events', 'tenant_id', nullable=False)
-    
-    # Add tenant_id to files table
-    op.add_column('files', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_files_tenant_id'), 'files', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_files_tenant_id', 'files', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
-    op.execute(
-        """
-        UPDATE files
-        SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default')
-        WHERE tenant_id IS NULL
-        """
-    )
-    op.alter_column('files', 'tenant_id', nullable=False)
-    
-    # Add tenant_id to folders table
-    op.add_column('folders', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_folders_tenant_id'), 'folders', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_folders_tenant_id', 'folders', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
-    op.execute(
-        """
-        UPDATE folders
-        SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default')
-        WHERE tenant_id IS NULL
-        """
-    )
-    op.alter_column('folders', 'tenant_id', nullable=False)
-    
-    # Add tenant_id to roles table
-    op.add_column('roles', sa.Column('tenant_id', sa.Integer(), nullable=True))
-    op.create_index(op.f('ix_roles_tenant_id'), 'roles', ['tenant_id'], unique=False)
-    op.create_foreign_key('fk_roles_tenant_id', 'roles', 'tenants', ['tenant_id'], ['id'], ondelete='CASCADE')
-    op.execute(
-        """
-        UPDATE roles
-        SET tenant_id = (SELECT id FROM tenants WHERE slug = 'default')
-        WHERE tenant_id IS NULL
-        """
-    )
-    op.alter_column('roles', 'tenant_id', nullable=False)
+    ))
+
+    for table in ['cameras', 'incidents', 'events', 'files', 'folders', 'roles']:
+        _add_tenant_id(conn, table)
 
 
 def downgrade() -> None:
