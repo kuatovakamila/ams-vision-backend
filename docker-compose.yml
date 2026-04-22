@@ -1,0 +1,75 @@
+services:
+  fastapi:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://ams_user:ams_password@postgres:5432/ams_db
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=30
+      - ENVIRONMENT=development
+      # MinIO Configuration
+      - MINIO_ENDPOINT=minio.trackfacility.com
+      - MINIO_ACCESS_KEY=w0lZdDZdKEfYcKiiyxJB
+      - MINIO_SECRET_KEY=mkptG8MT00PVK8YW7Cjtu49XTA6pcvYEAviL4KVx
+      - MINIO_BUCKET=clients-bucket
+      - MINIO_FOLDER_PREFIX=esg-group-folder
+      - MINIO_SECURE=true
+      - MINIO_REGION=us-east-1
+      - MINIO_PRESIGNED_URL_EXPIRY=3600
+    volumes:
+      - ./app:/app/app
+    networks:
+      - ams-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=ams_user
+      - POSTGRES_PASSWORD=ams_password
+      - POSTGRES_DB=ams_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db:/docker-entrypoint-initdb.d
+    ports:
+      - "5433:5432"
+    networks:
+      - ams-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ams_user -d ams_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ams-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ams-network:
+    driver: bridge
