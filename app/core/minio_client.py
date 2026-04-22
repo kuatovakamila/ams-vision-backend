@@ -38,12 +38,8 @@ class MinIOClient:
                 logger.info(f"Created MinIO bucket: {self.bucket_name}")
             else:
                 logger.info(f"MinIO bucket exists: {self.bucket_name}")
-        except S3Error as e:
-            logger.error(f"Error checking/creating bucket: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"MinIO bucket error: {str(e)}",
-            )
+        except Exception as e:
+            logger.warning(f"MinIO bucket check failed (will retry on use): {e}")
 
     def _get_object_name(self, filename: str, folder_path: str = None) -> str:
         """Get the full object name including folder prefix and folder path"""
