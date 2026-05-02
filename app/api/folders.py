@@ -58,7 +58,7 @@ async def create_folder(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new folder"""
-    folder = await FolderService.create_folder(db, folder_data, current_user.id)
+    folder = await FolderService.create_folder(db, folder_data, current_user.id, tenant_id=current_user.tenant_id)
     return folder
 
 

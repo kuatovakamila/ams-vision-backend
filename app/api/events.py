@@ -73,7 +73,11 @@ async def get_events(
 
 
 @router.post("/", response_model=EventResponse)
-async def create_event(event_data: EventCreate, db: AsyncSession = Depends(get_db)):
+async def create_event(
+    event_data: EventCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     """Create a new event"""
     # Validate event type
     if event_data.event_type not in ["entrance", "exit"]:
@@ -86,6 +90,7 @@ async def create_event(event_data: EventCreate, db: AsyncSession = Depends(get_d
         location=event_data.location,
         camera_id=event_data.camera_id,
         user_id=event_data.user_id,
+        tenant_id=current_user.tenant_id,
     )
 
     db.add(db_event)

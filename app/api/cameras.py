@@ -72,6 +72,7 @@ async def create_camera(
         status=camera_data.status,
         ip_address=camera_data.ip_address,
         stream_url=camera_data.stream_url,
+        tenant_id=current_user.tenant_id,
     )
 
     db.add(db_camera)

@@ -91,6 +91,7 @@ async def create_user(
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         is_active=user_data.is_active,
+        tenant_id=current_user.tenant_id,
     )
 
     # Assign role by id or by name

@@ -82,6 +82,7 @@ async def create_incident(
         camera_id=incident_data.camera_id,
         assigned_to=incident_data.assigned_to,
         reported_by=current_user.id,
+        tenant_id=current_user.tenant_id,
     )
 
     db.add(db_incident)

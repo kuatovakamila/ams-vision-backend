@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import re
 
-from .database import get_db
+from .database import AsyncSessionLocal
 from .tenant import tenant_service
 from ..models.tenant import Tenant
 
@@ -74,30 +74,26 @@ class TenantMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Get DB session
-        try:
-            db = next(get_db())
-        except Exception:
-            # If DB is not available, continue without tenant validation
-            await self.app(scope, receive, send)
-            return
-
         # Extract tenant information
         tenant_slug = await self._extract_tenant(request)
 
         if tenant_slug:
             # Validate tenant and set context
             try:
-                await self._set_tenant_context(db, tenant_slug)
+                async with AsyncSessionLocal() as db:
+                    await self._set_tenant_context(db, tenant_slug)
             except HTTPException as e:
-                # Handle tenant validation error
+                import json
                 response = Response(
-                    content={"detail": e.detail},
+                    content=json.dumps({"detail": e.detail}),
                     status_code=e.status_code,
                     media_type="application/json",
                 )
                 await response(scope, receive, send)
                 return
+            except Exception:
+                # If DB is not available, continue without tenant validation
+                pass
 
         # Continue with the request
         await self.app(scope, receive, send)

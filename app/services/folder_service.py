@@ -14,7 +14,7 @@ class FolderService:
 
     @staticmethod
     async def create_folder(
-        db: AsyncSession, folder_data: FolderCreate, created_by: int
+        db: AsyncSession, folder_data: FolderCreate, created_by: int, tenant_id: int = None
     ) -> Folder:
         """Create a new folder"""
 
@@ -51,6 +51,7 @@ class FolderService:
             parent_id=folder_data.parent_id,
             created_by=created_by,
             path="",  # Will be calculated after creation
+            tenant_id=tenant_id,
         )
 
         db.add(db_folder)
