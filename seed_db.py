@@ -103,28 +103,44 @@ async def seed():
                        "priority": priority, "loc": location, "reporter": admin_id, "tenant_id": tenant_id})
         await db.commit()
 
-        # Events
+        # Users for attendance
+        operator_id = (await db.execute(text("SELECT id FROM users WHERE email='operator@ams.com'"))).fetchone()
+        operator_id = operator_id[0] if operator_id else None
+        viewer_id = (await db.execute(text("SELECT id FROM users WHERE email='viewer@ams.com'"))).fetchone()
+        viewer_id = viewer_id[0] if viewer_id else None
+
+        # Events with timestamps (for attendance: on-time before 09:00, late after 09:00)
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+
         events = [
-            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, admin_id, "person"),
-            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, admin_id, "person"),
-            ("entrance", "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car"),
-            ("exit",     "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car"),
-            ("entrance", "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person"),
-            ("entrance", "Запасной выход",    camera_ids[5] if len(camera_ids) > 5 else None, None, "person"),
-            ("exit",     "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person"),
-            ("entrance", "Переговорная",      camera_ids[4] if len(camera_ids) > 4 else None, None, "person"),
+            # On time (before 09:00)
+            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, admin_id,    "person", f"{today} 08:32:00"),
+            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, operator_id, "person", f"{today} 08:45:00"),
+            # Late (after 09:00)
+            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, viewer_id,   "person", f"{today} 09:17:00"),
+            # Exits
+            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, admin_id,    "person", f"{today} 18:05:00"),
+            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, operator_id, "person", f"{today} 17:50:00"),
+            # Parking / cameras (no user_id)
+            ("entrance", "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car",    f"{today} 08:30:00"),
+            ("exit",     "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car",    f"{today} 17:45:00"),
+            ("entrance", "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person", f"{today} 10:00:00"),
+            ("exit",     "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person", f"{today} 10:30:00"),
+            ("entrance", "Запасной выход",    camera_ids[5] if len(camera_ids) > 5 else None, None, "person", f"{today} 09:05:00"),
+            ("entrance", "Переговорная",      camera_ids[4] if len(camera_ids) > 4 else None, None, "person", f"{today} 11:00:00"),
         ]
-        for ev_type, location, cam_id, user_id, obj_type in events:
+        for ev_type, location, cam_id, user_id, obj_type, ts in events:
             existing = (await db.execute(
-                text("SELECT id FROM events WHERE event_type=:t AND location=:l AND tenant_id=:tid LIMIT 1"),
-                {"t": ev_type, "l": location, "tid": tenant_id}
+                text("SELECT id FROM events WHERE event_type=:t AND location=:l AND user_id IS NOT DISTINCT FROM :uid AND tenant_id=:tid LIMIT 1"),
+                {"t": ev_type, "l": location, "uid": user_id, "tid": tenant_id}
             )).fetchone()
             if not existing:
                 await db.execute(text("""
-                    INSERT INTO events (event_type, location, camera_id, user_id, object_type, tenant_id)
-                    VALUES (:type, :loc, :cam, :user, :obj, :tenant_id)
+                    INSERT INTO events (event_type, location, camera_id, user_id, object_type, tenant_id, created_at)
+                    VALUES (:type, :loc, :cam, :user, :obj, :tenant_id, :ts)
                 """), {"type": ev_type, "loc": location, "cam": cam_id,
-                       "user": user_id, "obj": obj_type, "tenant_id": tenant_id})
+                       "user": user_id, "obj": obj_type, "tenant_id": tenant_id, "ts": ts})
         await db.commit()
 
         # Folders

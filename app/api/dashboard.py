@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time, timezone
 from typing import Dict, Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 
 from ..core.database import get_db
 from ..models.user import User
@@ -10,7 +10,7 @@ from ..models.camera import Camera
 from ..models.incident import Incident
 from ..models.event import Event
 from ..models.file import File
-from ..schemas.dashboard import DashboardStats, QuickStats
+from ..schemas.dashboard import DashboardStats, QuickStats, AttendanceStats
 from .auth import get_current_user
 
 router = APIRouter()
@@ -255,4 +255,65 @@ async def get_quick_stats(
             "inactive": total_users - active_users,
         },
         files={"total": total_files},
+    )
+
+
+@router.get("/attendance", response_model=AttendanceStats)
+async def get_attendance_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Attendance stats: who came today, how many were late (after 9:00)"""
+    WORK_START_HOUR = 9  # 09:00
+
+    today = datetime.now().date()
+    today_start = datetime.combine(today, time(0, 0, 0))
+    today_end = datetime.combine(today, time(23, 59, 59))
+    work_start = datetime.combine(today, time(WORK_START_HOUR, 0, 0))
+
+    # Total employees
+    total_result = await db.execute(select(func.count(User.id)).where(User.is_active == True))
+    total_employees = total_result.scalar() or 0
+
+    # Users who had entrance events today (unique)
+    present_result = await db.execute(
+        select(func.count(func.distinct(Event.user_id))).where(
+            and_(
+                Event.event_type == "entrance",
+                Event.user_id.isnot(None),
+                Event.created_at >= today_start,
+                Event.created_at <= today_end,
+            )
+        )
+    )
+    present_today = present_result.scalar() or 0
+
+    # Users who arrived LATE (first entrance after 09:00)
+    late_result = await db.execute(
+        select(func.count(func.distinct(Event.user_id))).where(
+            and_(
+                Event.event_type == "entrance",
+                Event.user_id.isnot(None),
+                Event.created_at > work_start,
+                Event.created_at <= today_end,
+            )
+        )
+    )
+    late_today = late_result.scalar() or 0
+
+    on_time_today = max(present_today - late_today, 0)
+    absent_today = max(total_employees - present_today, 0)
+    attendance_rate = round((present_today / total_employees * 100), 1) if total_employees else 0.0
+    late_percentage = round((late_today / present_today * 100), 1) if present_today else 0.0
+
+    return AttendanceStats(
+        total_employees=total_employees,
+        present_today=present_today,
+        absent_today=absent_today,
+        late_today=late_today,
+        on_time_today=on_time_today,
+        attendance_rate=attendance_rate,
+        late_percentage=late_percentage,
+        work_start_time="09:00",
+        date=today.isoformat(),
     )
