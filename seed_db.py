@@ -142,6 +142,34 @@ async def seed():
                        "path": f"/{folder_name}", "creator": admin_id, "tenant_id": tenant_id})
         await db.commit()
 
+        # Files (for dashboard file count)
+        folder_rows = (await db.execute(text("SELECT id FROM folders WHERE tenant_id=:tid"), {"tid": tenant_id})).fetchall()
+        folder_ids = [r[0] for r in folder_rows]
+
+        files = [
+            ("отчёт_январь.pdf",       "Отчёт январь 2025.pdf",          "application/pdf",      1024 * 512),
+            ("инцидент_001.jpg",        "Инцидент #001 фото.jpg",          "image/jpeg",           1024 * 256),
+            ("камера_схема.png",        "Схема расположения камер.png",    "image/png",            1024 * 180),
+            ("протокол_проверки.docx",  "Протокол проверки.docx",         "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 1024 * 95),
+            ("архив_событий.csv",       "Архив событий март.csv",          "text/csv",             1024 * 64),
+            ("резервная_копия.zip",     "Резервная копия БД.zip",          "application/zip",      1024 * 1024 * 3),
+        ]
+        for fname, orig, mime, size in files:
+            existing = (await db.execute(
+                text("SELECT id FROM files WHERE filename=:f AND tenant_id=:tid"),
+                {"f": fname, "tid": tenant_id}
+            )).fetchone()
+            if not existing:
+                fid = folder_ids[0] if folder_ids else None
+                await db.execute(text("""
+                    INSERT INTO files (filename, original_filename, file_path, file_size,
+                                       mime_type, uploaded_by, folder_id, tenant_id)
+                    VALUES (:fname, :orig, :path, :size, :mime, :uploader, :folder, :tenant_id)
+                """), {"fname": fname, "orig": orig, "path": f"ams-vision/{fname}",
+                       "size": size, "mime": mime, "uploader": admin_id,
+                       "folder": fid, "tenant_id": tenant_id})
+        await db.commit()
+
         print("✓ Database seeded successfully.")
         print("  Логин: admin@ams.com    / admin123")
         print("  Логин: operator@ams.com / operator123")
