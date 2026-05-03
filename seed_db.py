@@ -110,25 +110,26 @@ async def seed():
         viewer_id = viewer_id[0] if viewer_id else None
 
         # Events with timestamps (for attendance: on-time before 09:00, late after 09:00)
-        from datetime import datetime, timedelta
-        today = datetime.now().date()
+        from datetime import datetime as dt
+        def t(h, m):
+            return dt.now().replace(hour=h, minute=m, second=0, microsecond=0)
 
         events = [
             # On time (before 09:00)
-            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, admin_id,    "person", f"{today} 08:32:00"),
-            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, operator_id, "person", f"{today} 08:45:00"),
+            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, admin_id,    "person", t(8, 32)),
+            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, operator_id, "person", t(8, 45)),
             # Late (after 09:00)
-            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, viewer_id,   "person", f"{today} 09:17:00"),
+            ("entrance", "Главный вход",      camera_ids[0] if camera_ids else None, viewer_id,   "person", t(9, 17)),
             # Exits
-            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, admin_id,    "person", f"{today} 18:05:00"),
-            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, operator_id, "person", f"{today} 17:50:00"),
+            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, admin_id,    "person", t(18, 5)),
+            ("exit",     "Главный вход",      camera_ids[0] if camera_ids else None, operator_id, "person", t(17, 50)),
             # Parking / cameras (no user_id)
-            ("entrance", "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car",    f"{today} 08:30:00"),
-            ("exit",     "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car",    f"{today} 17:45:00"),
-            ("entrance", "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person", f"{today} 10:00:00"),
-            ("exit",     "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person", f"{today} 10:30:00"),
-            ("entrance", "Запасной выход",    camera_ids[5] if len(camera_ids) > 5 else None, None, "person", f"{today} 09:05:00"),
-            ("entrance", "Переговорная",      camera_ids[4] if len(camera_ids) > 4 else None, None, "person", f"{today} 11:00:00"),
+            ("entrance", "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car",    t(8, 30)),
+            ("exit",     "Парковка A",        camera_ids[1] if len(camera_ids) > 1 else None, None, "car",    t(17, 45)),
+            ("entrance", "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person", t(10, 0)),
+            ("exit",     "Серверная комната", camera_ids[2] if len(camera_ids) > 2 else None, admin_id, "person", t(10, 30)),
+            ("entrance", "Запасной выход",    camera_ids[5] if len(camera_ids) > 5 else None, None, "person", t(9, 5)),
+            ("entrance", "Переговорная",      camera_ids[4] if len(camera_ids) > 4 else None, None, "person", t(11, 0)),
         ]
         for ev_type, location, cam_id, user_id, obj_type, ts in events:
             existing = (await db.execute(
